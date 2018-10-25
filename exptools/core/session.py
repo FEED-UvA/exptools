@@ -10,7 +10,7 @@ Created by Tomas HJ Knapen on 2009-11-26.
 Copyright (c) 2009 TK. All rights reserved.
 """
 
-from psychopy import visual, core, event, misc, logging
+from psychopy import visual, core, event, misc, logging, monitors
 import pygame
 #from pygame.locals import *
 from scipy.io import wavfile
@@ -69,8 +69,8 @@ class Session(object):
 
          #Set arguments from config file or kwargs
         for argument in ['size', 'full_screen', 'background_color', 'foreground_color', 'gamma_scale',
-                         'physical_screen_size', 'physical_screen_distance', 'framerate',
-                         'max_lums', 'wait_blanking', 'screen_nr', 'mouse_visible']:
+                         'physical_screen_size', 'physical_screen_distance', 'framerate', 'linearize_gamma',
+                         'max_lums', 'min_lums', 'wait_blanking', 'screen_nr', 'mouse_visible']:
             value = kwargs.pop(argument, self.config.get('screen', argument))
             setattr(self, argument, value)
 
@@ -93,10 +93,20 @@ class Session(object):
             self.screen.waitBlanking = self.wait_blanking
         elif engine == 'psychopy':   
 
-            if hasattr(self, 'gamma_scale'):
-                gamma = self.gamma_scale
-            else:
-                gamma = None
+            self.monitor = monitors.Monitor('default')
+            self.monitor.setDistance(self.physical_screen_distance)
+
+            # creating a screen with gamma correction requires that we create a monitor for it. 
+            if hasattr(self, 'min_lums') and hasattr(self, 'max_lums') and hasattr(self, 'gamma_scale'): 
+
+                gray_values = np.array([np.array(self.min_lums).sum(), np.array(self.max_lums).sum(), np.array(self.gamma_scale).mean()])[:,np.newaxis]
+                gg = np.array([self.min_lums, self.max_lums, self.gamma_scale])
+                gg = np.r_[gray_values.T, gg.T]
+
+                self.monitor.setLinearizeMethod(1)
+                self.monitor.setGammaGrid(gg)
+                # if self.linearize_gamma:
+                    # self.monitor.setGamma([1,1,1])
 
             self.screen = visual.Window(size=self.size, 
                                         fullscr=self.full_screen, 
@@ -108,7 +118,7 @@ class Session(object):
                                         waitBlanking=self.wait_blanking, 
                                         useFBO=True,
                                         winType='pyglet',
-                                        gamma=gamma)
+                                        monitor=self.monitor)
 
         self.screen.setMouseVisible(self.mouse_visible)
         event.Mouse(visible=self.mouse_visible, win=self.screen)
@@ -188,7 +198,7 @@ class Session(object):
             return (data, pyaudio.paContinue)
 
         # open stream using callback (3)
-        stream = self.pyaudio.open(format=pyaudio.paInt16,
+        stream = pyaudio.PyAudio.open(format=pyaudio.paInt16,
                         channels=1,
                         rate=44100,
                         output=True,
@@ -207,7 +217,7 @@ class Session(object):
             return (data, pyaudio.paContinue)
 
         # open stream using callback (3)
-        stream = self.pyaudio.open(format=pyaudio.paInt16,
+        stream = pyaudio.PyAudio.open(format=pyaudio.paInt16,
                         channels=1,
                         rate=44100,
                         output=True,
