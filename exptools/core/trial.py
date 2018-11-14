@@ -4,9 +4,10 @@ from psychopy import logging, event
 import time as time_module 
 import random
 
+
 class Trial(object):
-    def __init__(self, 
-                 parameters = {}, phase_durations = [], session = None, screen = None, tracker = None):
+    def __init__(self, parameters={}, phase_durations=[], session=None, screen=None,
+                 tracker=None):
 
         self.parameters = parameters.copy()
         self.phase_durations = phase_durations
@@ -19,6 +20,7 @@ class Trial(object):
         else:
             self.screen = screen
 
+        self.start_time = [None] * len(phase_durations)
         self.events = []
         self.phase = 0
         self.phase_times = np.cumsum(np.array(self.phase_durations))
@@ -35,14 +37,13 @@ class Trial(object):
         else:
             self.ID = ID
 
-        self.start_time = self.session.clock.getTime()
         if self.tracker:
             self.tracker.log('trial ' + str(self.ID) + ' started at ' + str(self.start_time) )
             self.tracker.send_command('record_status_message "Trial ' + str(self.ID) + '"')
         self.events.append('trial ' + str(self.ID) + ' started at ' + str(self.start_time))
 
         self.create_stimuli()
-
+        self.start_time[0] = self.session.clock.getTime()
         while not self.stopped:
             self.check_phase_time()
             self.draw()
@@ -85,7 +86,8 @@ class Trial(object):
     def phase_forward(self):
         """go one phase forward"""
         self.phase += 1
-        phase_time = str(self.session.clock.getTime())
+        self.start_time[self.phase] = self.session.clock.getTime()
+        phase_time = str(self.start_time[self.phase])
         self.events.append('trial ' + str(self.ID) + ' phase ' + str(self.phase) + ' started at ' + phase_time)
         if self.tracker:
             self.tracker.log('trial ' + str(self.ID) + ' phase ' + str(self.phase) + ' started at ' + phase_time )
@@ -105,7 +107,7 @@ class Trial(object):
         self.phase_times[self.phase] = self.session.clock.getTime()
         # the first phase has no previous phase
         if self.phase == 0:
-            previous_time = self.start_time
+            previous_time = self.start_time[0]
         elif self.phase > 0:
             previous_time = self.phase_times[self.phase - 1]
         # time elapsed since start of this phase
