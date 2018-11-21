@@ -11,7 +11,6 @@ class Trial(object):
 
         self.parameters = parameters.copy()
         self.phase_durations = phase_durations
-
         self.tracker = tracker
         self.session = session
 
@@ -26,10 +25,7 @@ class Trial(object):
         self.phase_times = np.cumsum(np.array(self.phase_durations))
         self.stopped = False
 
-    def create_stimuli(self):
-        pass
-
-    def run(self, ID=None):
+    def run(self, ID=None, log_phase=None, debug=False):
 
         if ID is None:
             hash = random.getrandbits(128)
@@ -42,8 +38,8 @@ class Trial(object):
             self.tracker.send_command('record_status_message "Trial ' + str(self.ID) + '"')
         self.events.append('trial ' + str(self.ID) + ' started at ' + str(self.start_time))
 
-        self.create_stimuli()
         self.start_time[0] = self.session.clock.getTime()
+        
         while not self.stopped:
             self.check_phase_time()
             self.draw()
@@ -51,6 +47,17 @@ class Trial(object):
 
         self.stop()
 
+        if log_phase is not None:
+
+            if not isinstance(log_phase, (list, tuple)):
+                log_phase = [log_phase]
+
+            for lph in log_phase:
+                this_onset = self.start_time[lph] - self.session.start_exp
+                self.parameters['onset_ph%i' % lph] = np.round(this_onset, 4)
+
+                if debug:
+                    print("Onset phase %i: %.3f" % (lph, this_onset))
 
     def stop(self):
         self.stop_time = self.session.clock.getTime()
@@ -68,7 +75,6 @@ class Trial(object):
         if self.tracker:
             self.tracker.log('trial ' + str(self.ID) + ' event ' + str(key) + ' at ' + str(self.session.clock.getTime()) )
         self.events.append('trial ' + str(self.ID) + ' event ' + str(key) + ' at ' + str(self.session.clock.getTime()))
-
 
     def feedback(self, answer, setting):
         """feedback give the subject feedback on performance"""
@@ -94,8 +100,22 @@ class Trial(object):
             time_module.sleep(0.00001)
 
     def event(self):
+
         for ev in event.getKeys():
-            self.key_event(ev)
+
+            if len(ev) > 0:
+                if ev in ['esc', 'escape', 'q']:
+                    self.events.append(
+                        [-99, self.session.clock.getTime() - self.start_time[self.phase]])
+                    self.stopped = True
+                    self.session.stopped = True
+                    print('run canceled by user')
+
+                self.key_event(ev)
+                self.last_resp = ev[-1]
+        
+        if event.getKeys():
+            self.responded = True
 
     def check_phase_time(self):
         """
@@ -125,7 +145,6 @@ class Trial(object):
 
             
 class MRITrial(Trial):
-
 
     def __init__(self, *args, **kwargs):
         super(MRITrial, self).__init__(*args, **kwargs)
