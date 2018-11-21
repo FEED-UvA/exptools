@@ -24,6 +24,7 @@ class Trial(object):
         self.phase = 0
         self.phase_times = np.cumsum(np.array(self.phase_durations))
         self.stopped = False
+        self.last_resp = None
 
     def run(self, ID=None, log_phase=None, debug=False):
 
