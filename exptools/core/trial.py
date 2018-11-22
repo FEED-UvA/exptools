@@ -25,6 +25,7 @@ class Trial(object):
         self.phase_times = np.cumsum(np.array(self.phase_durations))
         self.stopped = False
         self.last_resp = None
+        self.last_resp_onset = None
 
     def run(self, ID=None, log_phase=None, debug=False):
 
@@ -40,7 +41,8 @@ class Trial(object):
         self.events.append('trial ' + str(self.ID) + ' started at ' + str(self.start_time))
 
         self.start_time[0] = self.session.clock.getTime()
-        
+        self.last_resp = None
+        self.last_resp_onset = None  
         while not self.stopped:
             self.check_phase_time()
             self.draw()
@@ -114,6 +116,7 @@ class Trial(object):
 
                 self.key_event(ev)
                 self.last_resp = ev[-1]
+                self.last_resp_onset = self.session.clock.getTime() - self.session.start_exp
         
         if event.getKeys():
             self.responded = True
