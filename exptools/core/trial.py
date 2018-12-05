@@ -60,7 +60,6 @@ class Trial(object):
             for lph in log_phase:
                 this_onset = self.start_time[lph] - self.session.start_exp
                 self.parameters['onset_phase-%i' % lph] = np.round(this_onset, 4)
-                #self.parameters['duration_phase-%i' % lph] = self.session.clock.getTime() - np.round(this_onset, 4)
 
                 if debug:
                     print("Onset phase %i: %.3f" % (lph, this_onset))
