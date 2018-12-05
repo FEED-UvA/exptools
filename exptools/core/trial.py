@@ -24,6 +24,7 @@ class Trial(object):
         self.phase = 0
         self.phase_times = np.cumsum(np.array(self.phase_durations))
         self.stopped = False
+        self.manual_quit = False
         self.last_resp = None
         self.last_resp_onset = None
 
@@ -43,6 +44,7 @@ class Trial(object):
         self.start_time[0] = self.session.clock.getTime()
         self.last_resp = None
         self.last_resp_onset = None  
+
         while not self.stopped:
             self.check_phase_time()
             self.draw()
@@ -50,14 +52,15 @@ class Trial(object):
 
         self.stop()
 
-        if log_phase is not None:
+        if log_phase is not None and not self.manual_quit:
 
             if not isinstance(log_phase, (list, tuple)):
                 log_phase = [log_phase]
 
             for lph in log_phase:
                 this_onset = self.start_time[lph] - self.session.start_exp
-                self.parameters['onset_ph%i' % lph] = np.round(this_onset, 4)
+                self.parameters['onset_phase-%i' % lph] = np.round(this_onset, 4)
+                #self.parameters['duration_phase-%i' % lph] = self.session.clock.getTime() - np.round(this_onset, 4)
 
                 if debug:
                     print("Onset phase %i: %.3f" % (lph, this_onset))
@@ -112,6 +115,7 @@ class Trial(object):
                         [-99, self.session.clock.getTime() - self.start_time[self.phase]])
                     self.stopped = True
                     self.session.stopped = True
+                    self.manual_quit = True
                     print('run canceled by user')
 
                 self.key_event(ev)
