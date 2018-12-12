@@ -44,9 +44,9 @@ class Session(object):
         self.subject_initials = subject_initials
 
         if index_number is None:
-            index_number = raw_input('Run [1]?')
-            if index_number == '':
-                index_number = 1
+            #index_number = raw_input('Run [1]?')
+            #if index_number == '':
+            index_number = 1
 
         self.index_number = index_number
         
