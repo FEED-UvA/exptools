@@ -19,6 +19,7 @@ class Trial(object):
         else:
             self.screen = screen
 
+        self.start_time_trial = None
         self.start_time = [None] * len(phase_durations)
         self.events = []
         self.phase = 0
@@ -30,6 +31,10 @@ class Trial(object):
 
     def run(self, ID=None, log_phase=None, debug=False):
 
+        self.start_time_trial = self.session.clock.getTime() - self.session.start_time
+        if debug:
+            print("Onset trial: %.3f" % self.start_time_trial)
+
         if ID is None:
             hash = random.getrandbits(128)
             self.ID = "%032x" % hash
@@ -37,15 +42,27 @@ class Trial(object):
             self.ID = ID
 
         if self.tracker:
-            self.tracker.log('trial ' + str(self.ID) + ' started at ' + str(self.start_time) )
+            self.tracker.log('trial ' + str(self.ID) + ' started at ' + str(self.start_time_trial) )
             self.tracker.send_command('record_status_message "Trial ' + str(self.ID) + '"')
-        self.events.append('trial ' + str(self.ID) + ' started at ' + str(self.start_time))
-
-        self.start_time[0] = self.session.clock.getTime()
+        
+        self.events.append('trial ' + str(self.ID) + ' started at ' + str(self.start_time_trial))
         self.last_resp = None
         self.last_resp_onset = None  
 
         while not self.stopped:
+
+            if self.start_time[self.phase] is None:
+                now = self.session.clock.getTime()
+                self.start_time[self.phase] = now - self.session.start_time
+                onset_from_trial = now - self.start_time_trial 
+                self.events.append('trial ' + str(self.ID) + ' phase ' + str(self.phase) + ' started at ' + str(self.start_time[self.phase]))
+                if self.tracker:
+                    self.tracker.log('trial ' + str(self.ID) + ' phase ' + str(self.phase) + ' started at ' + str(self.start_time[self.phase]))
+                    time_module.sleep(0.00001)
+
+                if debug:
+                    print("Onset phase %i: %.3f" % (self.phase, onset_from_trial))
+
             self.check_phase_time()
             self.draw()
             self.event()
@@ -58,14 +75,11 @@ class Trial(object):
                 log_phase = [log_phase]
 
             for lph in log_phase:
-                this_onset = self.start_time[lph] - self.session.start_exp
-                self.parameters['onset_phase-%i' % lph] = np.round(this_onset, 4)
-
-                if debug:
-                    print("Onset phase %i: %.3f" % (lph, this_onset))
+                this_onset = np.round(self.start_time[lph], 4)
+                self.parameters['onset_phase-%i' % lph] = this_onset
 
     def stop(self):
-        self.stop_time = self.session.clock.getTime()
+        self.stop_time = self.session.clock.getTime() - self.session.start_time
         self.stopped = True
         if self.tracker:
             # pipe parameters to the eyelink data file in a for loop so as to limit the risk of flooding the buffer
@@ -77,9 +91,10 @@ class Trial(object):
         self.session.outputDict['parameterArray'].append(self.parameters)
 
     def key_event(self, key):
+        this_time = str(self.session.clock.getTime() - self.session.start_time)
         if self.tracker:
-            self.tracker.log('trial ' + str(self.ID) + ' event ' + str(key) + ' at ' + str(self.session.clock.getTime()) )
-        self.events.append('trial ' + str(self.ID) + ' event ' + str(key) + ' at ' + str(self.session.clock.getTime()))
+            self.tracker.log('trial ' + str(self.ID) + ' event ' + str(key) + ' at ' + this_time)
+        self.events.append('trial ' + str(self.ID) + ' event ' + str(key) + ' at ' + this_time)
 
     def feedback(self, answer, setting):
         """feedback give the subject feedback on performance"""
@@ -97,12 +112,12 @@ class Trial(object):
     def phase_forward(self):
         """go one phase forward"""
         self.phase += 1
-        self.start_time[self.phase] = self.session.clock.getTime()
-        phase_time = str(self.start_time[self.phase])
-        self.events.append('trial ' + str(self.ID) + ' phase ' + str(self.phase) + ' started at ' + phase_time)
-        if self.tracker:
-            self.tracker.log('trial ' + str(self.ID) + ' phase ' + str(self.phase) + ' started at ' + phase_time )
-            time_module.sleep(0.00001)
+        #self.start_time[self.phase] = self.session.clock.getTime()
+        #phase_time = str(self.start_time[self.phase])
+        #self.events.append('trial ' + str(self.ID) + ' phase ' + str(self.phase) + ' started at ' + phase_time)
+        #if self.tracker:
+        #    self.tracker.log('trial ' + str(self.ID) + ' phase ' + str(self.phase) + ' started at ' + phase_time )
+        #    time_module.sleep(0.00001)
 
     def event(self):
 
@@ -131,7 +146,8 @@ class Trial(object):
         prompts the trial to either phase forward or stop, depending on the present phase.
         """
         # object variable to record all trial phase times in past and present
-        self.phase_times[self.phase] = self.session.clock.getTime()
+        self.phase_times[self.phase] = self.session.clock.getTime() - self.session.start_time
+        
         # the first phase has no previous phase
         if self.phase == 0:
             previous_time = self.start_time[0]
@@ -150,7 +166,7 @@ class Trial(object):
                 # the phase duration is below 0, this function calls itself when phasing forward.
                 self.check_phase_time()
 
-            
+
 class MRITrial(Trial):
 
     def __init__(self, *args, **kwargs):
