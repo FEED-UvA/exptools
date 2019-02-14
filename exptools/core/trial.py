@@ -32,6 +32,7 @@ class Trial(object):
     def run(self, ID=None, log_phase=None, debug=False):
 
         self.start_time_trial = self.session.clock.getTime() - self.session.start_time
+        
         if debug:
             print("Onset trial: %.3f" % self.start_time_trial)
 
@@ -48,20 +49,21 @@ class Trial(object):
         self.events.append('trial ' + str(self.ID) + ' started at ' + str(self.start_time_trial))
         self.last_resp = None
         self.last_resp_onset = None  
-
+        
         while not self.stopped:
-
             if self.start_time[self.phase] is None:
+                
                 now = self.session.clock.getTime()
                 self.start_time[self.phase] = now - self.session.start_time
-                onset_from_trial = now - self.start_time_trial 
+                onset_from_trial = (now - self.session.start_time) - self.start_time_trial
+
+                if debug:
+                    print("Onset phase %i: %.3f (abs=%.3f)" % (self.phase, onset_from_trial, self.start_time[self.phase]))
+
                 self.events.append('trial ' + str(self.ID) + ' phase ' + str(self.phase) + ' started at ' + str(self.start_time[self.phase]))
                 if self.tracker:
                     self.tracker.log('trial ' + str(self.ID) + ' phase ' + str(self.phase) + ' started at ' + str(self.start_time[self.phase]))
                     time_module.sleep(0.00001)
-
-                if debug:
-                    print("Onset phase %i: %.3f" % (self.phase, onset_from_trial))
 
             self.check_phase_time()
             self.draw()
