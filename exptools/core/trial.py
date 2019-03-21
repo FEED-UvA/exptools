@@ -119,7 +119,7 @@ class Trial(object):
 
                 self.key_event(ev)
                 self.last_resp = ev[-1]
-                self.last_resp_onset = self.session.clock.getTime() - self.session.start_exp
+                self.last_resp_onset = self.session.clock.getTime() - self.session.start_time
         
         if event.getKeys():
             self.responded = True
